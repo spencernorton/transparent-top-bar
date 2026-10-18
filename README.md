@@ -6,19 +6,19 @@
 </p>
 
 <p align="center">
-  <a href="https://github.com/spencercnorton/norvi-os"><img alt="Part of NorviOS" src="https://img.shields.io/badge/NorviOS-component-FD8024.svg"></a>
-  <a href="https://github.com/spencercnorton/transparent-top-bar/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/spencercnorton/transparent-top-bar/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://github.com/spencercnorton/transparent-top-bar/tags"><img alt="Latest release" src="https://img.shields.io/github/v/tag/spencercnorton/transparent-top-bar?label=release&sort=semver"></a>
+  <a href="https://github.com/spencernorton/norvi-os"><img alt="Part of NorviOS" src="https://img.shields.io/badge/NorviOS-component-FD8024.svg"></a>
+  <a href="https://github.com/spencernorton/transparent-top-bar/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/spencernorton/transparent-top-bar/actions/workflows/ci.yml/badge.svg"></a>
+  <a href="https://github.com/spencernorton/transparent-top-bar/tags"><img alt="Latest release" src="https://img.shields.io/github/v/tag/spencercnorton/transparent-top-bar?label=release&sort=semver"></a>
   <a href="#install"><img alt="Install for GNOME Shell" src="https://img.shields.io/badge/install-GNOME%20Shell-4a86cf.svg"></a>
   <a href="LICENSE"><img alt="Licence" src="https://img.shields.io/badge/licence-GPL--2.0--or--later-blue.svg"></a>
   <a href="https://buy.stripe.com/8x26oH2U44f65TRe574wM04"><img alt="Donate" src="https://img.shields.io/badge/donate-Stripe-635bff.svg?logo=stripe&logoColor=white"></a>
 </p>
 
 <p align="center">
-  <img alt="The NorviOS desktop: a transparent top bar with named workspaces on the left and the weather and clock on the right, over a colourful wallpaper, above a Files window rendered as frosted glass." src="https://raw.githubusercontent.com/spencercnorton/norvi-os/main/docs/screenshots/desktop.png" width="900">
+  <img alt="The NorviOS desktop: a transparent top bar with named workspaces on the left and the weather and clock on the right, over a colourful wallpaper, above a Files window rendered as frosted glass." src="https://raw.githubusercontent.com/spencernorton/norvi-os/main/docs/screenshots/desktop.png" width="900">
 </p>
 
-The screenshot is the [NorviOS](https://github.com/spencercnorton/norvi-os) desktop on a fresh Ubuntu 26.04 virtual machine with a demo account and a generated wallpaper.
+The screenshot is the [NorviOS](https://github.com/spencernorton/norvi-os) desktop on a fresh Ubuntu 26.04 virtual machine with a demo account and a generated wallpaper.
 
 A fork of [Transparent Top Bar](https://github.com/lamarios/gnome-shell-extension-transparent-top-bar) by Paul Fauchon, itself based on Hai Zhang's extension of the feature GNOME Shell 3.32 removed. Where the original uses one fixed opacity, this version measures the wallpaper and picks the opacity itself. It supports GNOME Shell 50 and 51.
 
@@ -36,7 +36,7 @@ A fork of [Transparent Top Bar](https://github.com/lamarios/gnome-shell-extensio
 
 ### GNOME Shell — the release zip
 
-Download `transparent-top-bar.shell-extension.zip` and `SHA256SUMS.txt` from the [latest release](https://github.com/spencercnorton/transparent-top-bar/releases/latest), then:
+Download `transparent-top-bar.shell-extension.zip` and `SHA256SUMS.txt` from the [latest release](https://github.com/spencernorton/transparent-top-bar/releases/latest), then:
 
 ```bash
 sha256sum --check --ignore-missing SHA256SUMS.txt
@@ -76,8 +76,8 @@ The extension reads the wallpaper file named in GNOME's own background settings,
 
 ## Contributing and support
 
-- Bugs and feature requests: [open an issue](https://github.com/spencercnorton/transparent-top-bar/issues/new/choose). Questions: [Discussions](https://github.com/spencercnorton/transparent-top-bar/discussions).
-- Security reports: [private vulnerability reporting](https://github.com/spencercnorton/transparent-top-bar/security/advisories/new). See [SECURITY.md](SECURITY.md). There is no e-mail address; that is deliberate.
+- Bugs and feature requests: [open an issue](https://github.com/spencernorton/transparent-top-bar/issues/new/choose). Questions: [Discussions](https://github.com/spencernorton/transparent-top-bar/discussions).
+- Security reports: [private vulnerability reporting](https://github.com/spencernorton/transparent-top-bar/security/advisories/new). See [SECURITY.md](SECURITY.md). There is no e-mail address; that is deliberate.
 - Pull requests are welcome; read [CONTRIBUTING.md](CONTRIBUTING.md) first. Changes are reviewed and merged on GitHub, then shipped in tagged releases.
 - If this saves you time, you can [support its development](https://buy.stripe.com/8x26oH2U44f65TRe574wM04).
 

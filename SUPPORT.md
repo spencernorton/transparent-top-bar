@@ -1,8 +1,8 @@
 # Support
 
-- **Something is broken** — [open a bug report](https://github.com/spencercnorton/transparent-top-bar/issues/new/choose).
-- **A question, or an idea** — [Discussions](https://github.com/spencercnorton/transparent-top-bar/discussions).
-- **A security problem** — [private vulnerability reporting](https://github.com/spencercnorton/transparent-top-bar/security/advisories/new), never a public issue. See [SECURITY.md](SECURITY.md).
+- **Something is broken** — [open a bug report](https://github.com/spencernorton/transparent-top-bar/issues/new/choose).
+- **A question, or an idea** — [Discussions](https://github.com/spencernorton/transparent-top-bar/discussions).
+- **A security problem** — [private vulnerability reporting](https://github.com/spencernorton/transparent-top-bar/security/advisories/new), never a public issue. See [SECURITY.md](SECURITY.md).
 - **Documentation** — the README in this repository.
 
 This is one developer's project, maintained in the open; there is no
@@ -11,4 +11,4 @@ and the newest tagged release is the only one that gets fixes.
 
 If this saves you time, you can [support its development](https://buy.stripe.com/8x26oH2U44f65TRe574wM04).
 
-Transparent Top Bar (Auto) is part of [NorviOS](https://github.com/spencercnorton/norvi-os).
+Transparent Top Bar (Auto) is part of [NorviOS](https://github.com/spencernorton/norvi-os).

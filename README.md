@@ -8,17 +8,15 @@
 <p align="center">
   <a href="https://github.com/spencernorton/norvi-os"><img alt="Part of NorviOS" src="https://img.shields.io/badge/NorviOS-component-FD8024.svg"></a>
   <a href="https://github.com/spencernorton/transparent-top-bar/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/spencernorton/transparent-top-bar/actions/workflows/ci.yml/badge.svg"></a>
-  <a href="https://github.com/spencernorton/transparent-top-bar/tags"><img alt="Latest release" src="https://img.shields.io/github/v/tag/spencercnorton/transparent-top-bar?label=release&sort=semver"></a>
+  <a href="https://github.com/spencernorton/transparent-top-bar/tags"><img alt="Latest release" src="https://img.shields.io/github/v/tag/spencernorton/transparent-top-bar?label=release&sort=semver"></a>
   <a href="#install"><img alt="Install for GNOME Shell" src="https://img.shields.io/badge/install-GNOME%20Shell-4a86cf.svg"></a>
   <a href="LICENSE"><img alt="Licence" src="https://img.shields.io/badge/licence-GPL--2.0--or--later-blue.svg"></a>
   <a href="https://buy.stripe.com/8x26oH2U44f65TRe574wM04"><img alt="Donate" src="https://img.shields.io/badge/donate-Stripe-635bff.svg?logo=stripe&logoColor=white"></a>
 </p>
 
-<p align="center">
-  <img alt="The NorviOS desktop: a transparent top bar with named workspaces on the left and the weather and clock on the right, over a colourful wallpaper, above a Files window rendered as frosted glass." src="https://raw.githubusercontent.com/spencernorton/norvi-os/main/docs/screenshots/desktop.png" width="900">
-</p>
+<p align="center"><picture><source media="(prefers-reduced-motion: reduce)" srcset="docs/demos/transparent-panel-still.png"><img src="docs/demos/transparent-panel.gif" alt="See the GNOME top bar over dark, light and green demonstration wallpapers." width="900"></picture></p>
 
-The screenshot is the [NorviOS](https://github.com/spencernorton/norvi-os) desktop on a fresh Ubuntu 26.04 virtual machine with a demo account and a generated wallpaper.
+The actual extension in an isolated GNOME session, with generated wallpapers. [Recording source and still image](docs/demos/README.md).
 
 A fork of [Transparent Top Bar](https://github.com/lamarios/gnome-shell-extension-transparent-top-bar) by Paul Fauchon, itself based on Hai Zhang's extension of the feature GNOME Shell 3.32 removed. Where the original uses one fixed opacity, this version measures the wallpaper and picks the opacity itself. It supports GNOME Shell 50 and 51.
 

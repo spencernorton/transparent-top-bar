@@ -92,6 +92,45 @@ function regionLuminances(pixbuf, region) {
 }
 
 /**
+ * Attempts to read precomputed panel-strip P95 luminance written by
+ * wallpaper-suite's compositor-worker into `<composite>.meta.json`, avoiding
+ * a redundant 25 MP JPEG decode inside gnome-shell.
+ */
+function tryReadSidecarLuminance(file, pictureOptions, cancellable, onMiss, onHit) {
+    if (pictureOptions !== 'spanned') {
+        onMiss();
+        return;
+    }
+    const path = file.get_path?.();
+    const primary = Main.layoutManager.primaryMonitor;
+    const union = monitorUnion();
+    if (!path || !primary || !union || typeof Gio.File.new_for_path !== 'function') {
+        onMiss();
+        return;
+    }
+    const sidecarFile = Gio.File.new_for_path(`${path}.meta.json`);
+    sidecarFile.load_contents_async(cancellable, (src, res) => {
+        try {
+            const [ok, bytes] = src.load_contents_finish(res);
+            if (!ok || cancellable?.is_cancelled()) {
+                onMiss();
+                return;
+            }
+            const meta = JSON.parse(new TextDecoder().decode(bytes));
+            const key = `${primary.x - union.x},${primary.y - union.y},${primary.width}x${primary.height}`;
+            const val = meta?.panelLuminanceP95?.[key];
+            if (typeof val === 'number' && Number.isFinite(val) && val >= 0 && val <= 1) {
+                onHit(val);
+                return;
+            }
+        } catch (_) {
+            // Sidecar absent or older schema without panelLuminanceP95; decode below.
+        }
+        onMiss();
+    });
+}
+
+/**
  * Asynchronously measures the wallpaper behind the panel.
  *
  * Calls `callback(luminance)` with a value in [0,1], or `callback(null)` if the wallpaper could not
@@ -111,31 +150,38 @@ export function measurePanelBackdrop(uri, pictureOptions, cancellable, callback)
         callback(null);
         return;
     }
-    file.read_async(GLib.PRIORITY_LOW, cancellable, (source, result) => {
-        let stream;
-        try {
-            stream = source.read_finish(result);
-        } catch (e) {
+    const decodeBackdrop = () => {
+        if (cancellable?.is_cancelled()) {
             callback(null);
             return;
         }
-        GdkPixbuf.Pixbuf.new_from_stream_at_scale_async(
-            stream,
-            SAMPLE_WIDTH,
-            -1,
-            true,
-            cancellable,
-            (pixbufSource, pixbufResult) => {
-                try {
-                    const pixbuf = GdkPixbuf.Pixbuf.new_from_stream_finish(pixbufResult);
-                    const luminances = regionLuminances(pixbuf, region);
-                    callback(luminances.length ? percentile(luminances) : null);
-                } catch (e) {
-                    callback(null);
-                } finally {
-                    stream.close_async(GLib.PRIORITY_LOW, null, null);
-                }
-            },
-        );
-    });
+        file.read_async(GLib.PRIORITY_LOW, cancellable, (source, result) => {
+            let stream;
+            try {
+                stream = source.read_finish(result);
+            } catch (e) {
+                callback(null);
+                return;
+            }
+            GdkPixbuf.Pixbuf.new_from_stream_at_scale_async(
+                stream,
+                SAMPLE_WIDTH,
+                -1,
+                true,
+                cancellable,
+                (pixbufSource, pixbufResult) => {
+                    try {
+                        const pixbuf = GdkPixbuf.Pixbuf.new_from_stream_finish(pixbufResult);
+                        const luminances = regionLuminances(pixbuf, region);
+                        callback(luminances.length ? percentile(luminances) : null);
+                    } catch (e) {
+                        callback(null);
+                    } finally {
+                        stream.close_async(GLib.PRIORITY_LOW, null, null);
+                    }
+                },
+            );
+        });
+    };
+    tryReadSidecarLuminance(file, pictureOptions, cancellable, decodeBackdrop, callback);
 }

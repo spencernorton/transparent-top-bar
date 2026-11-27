@@ -2,6 +2,12 @@
 
 All notable changes to this fork of Transparent Top Bar are documented here. The history before 2.0.0 is upstream's.
 
+## 2.0.1 — 2026-11-27
+
+- Connect `global.window_group` and `global.window_manager` listeners only while `dark-full-screen` is enabled.
+- Replace the 101-class generated stylesheet and legacy GNOME 3 `.panel-corner` rules with a scoped inline panel background declaration that preserves sibling inline styles.
+- Cache wallpaper opacity measurements by effective URI, scaling mode, clamp bounds, and primary monitor geometry, and read precomputed `panelLuminanceP95` sidecars when present to skip redundant pixbuf decodes.
+
 ## 2.0.0 — 2026-09-29
 
 The first release of this fork, on upstream `74b3ae8`.

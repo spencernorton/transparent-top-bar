@@ -55,7 +55,10 @@ const STUBS = {
             SettingsBindFlags: { DEFAULT: 0, GET: 1, INVERT_BOOLEAN: 8 },
             Settings: class { constructor(p) { Object.assign(this, globalThis.__hooks.settings(p?.schema ?? 'ext')); } },
             Cancellable: class { constructor() { this._c = false; } cancel() { this._c = true; } is_cancelled() { return this._c; } },
-            File: { new_for_uri(uri) { return globalThis.__hooks.file(uri); } },
+            File: {
+                new_for_uri(uri) { return globalThis.__hooks.file(uri); },
+                new_for_path(path) { return globalThis.__hooks.sidecarFile(path); },
+            },
         };`,
     'St.js': `
         export default {
@@ -109,6 +112,7 @@ for (const file of readdirSync(join(root, 'src')).filter((f) => f.endsWith('.js'
 
 // --- The fake desktop --------------------------------------------------------------------
 const panelClasses = new Set();
+let panelStyle = 'border-radius: 12px';
 const settingValues = {
     transparency: 35,
     'dark-full-screen': true,
@@ -150,8 +154,20 @@ globalThis.__hooks = {
             bind: () => {},
         };
     },
-    file: () => ({
+    sidecarData: null,
+    file: (uri) => ({
+        get_path: () => uri?.startsWith('file://') ? uri.slice('file://'.length) : null,
         read_async: (prio, cancel, cb) => cb({ read_finish: () => ({ close_async() {} }) }, 'res'),
+    }),
+    sidecarFile: () => ({
+        load_contents_async: (cancel, cb) => {
+            if (globalThis.__hooks.sidecarData !== null) {
+                const bytes = new TextEncoder().encode(JSON.stringify(globalThis.__hooks.sidecarData));
+                cb({ load_contents_finish: () => [true, bytes] }, 'res');
+            } else {
+                cb({ load_contents_finish: () => { throw new Error('missing'); } }, 'res');
+            }
+        },
     }),
     pixbuf: () => ({
         get_width: () => 1920,
@@ -170,10 +186,12 @@ globalThis.__hooks = {
         add_style_class_name: (c) => panelClasses.add(c),
         remove_style_class_name: (c) => panelClasses.delete(c),
         has_style_pseudo_class: () => false,
+        get_style: () => panelStyle,
+        set_style: (s) => { panelStyle = s; },
         get_height: () => 32,
         get_transformed_position: () => [0, 0],
     },
-    overview: connectable('overview'),
+    overview: { ...connectable('overview'), visibleTarget: false },
     sessionMode: { ...connectable('sessionMode'), hasWindows: true },
     layoutManager: {
         ...connectable('layoutManager'),
@@ -267,13 +285,31 @@ assert.ok(live.signals.size > 0, 'enable() connected nothing — the stubs are n
 // Drain debounce timers so the async measurement path actually executes.
 drainPending();
 assert.ok(globalThis.__hooks.pixbufCalls > 0, 'the wallpaper measurement path never ran');
-const opacityClasses = [...panelClasses].filter((c) => /^transparent-top-bar-\d+$/.test(c));
-assert.strictEqual(
-    opacityClasses.length,
-    1,
-    `exactly one opacity class should be applied, found: ${opacityClasses.join(', ') || 'none'}`,
+assert.ok(panelClasses.has('transparent-top-bar'), 'transparent-top-bar class should be applied');
+assert.ok(
+    /^.*background-color: rgba\(0, 0, 0, \d+\.\d{2}\); box-shadow: none;$/.test(panelStyle ?? ''),
+    `expected inline background-color style, got: ${panelStyle}`,
 );
-console.log(`  measurement ran — panel classes: ${[...panelClasses].join(' ')}`);
+assert.ok(
+    panelStyle.includes('border-radius: 12px'),
+    `pre-existing inline declarations must be preserved, got: ${panelStyle}`,
+);
+console.log(`  measurement ran — panel classes: ${[...panelClasses].join(' ')}, style: ${panelStyle}`);
+
+// Sidecar precomputed luminance avoids GdkPixbuf decode when present.
+const pixbufCallsBeforeSidecar = globalThis.__hooks.pixbufCalls;
+globalThis.__hooks.sidecarData = { panelLuminanceP95: { '3840,0,3840x2160': 0.5 } };
+settingValues['picture-uri'] = 'file:///tmp/composite.jpg';
+settingValues['picture-uri-dark'] = 'file:///tmp/composite.jpg';
+ext._scheduleAutoUpdate();
+drainPending();
+assert.strictEqual(
+    globalThis.__hooks.pixbufCalls,
+    pixbufCallsBeforeSidecar,
+    'sidecar luminance hit should skip GdkPixbuf decode',
+);
+globalThis.__hooks.sidecarData = null;
+console.log('  sidecar luminance fast-path ok — skipped GdkPixbuf decode');
 
 // Settings changes must not strand sources or desync the applied class.
 ext.transparencyChanged(null, 'transparency');
@@ -357,6 +393,11 @@ assert.strictEqual(
     [...panelClasses].filter((c) => c.startsWith('transparent-top-bar')).length,
     0,
     `disable() left panel classes behind: ${[...panelClasses].join(', ')}`,
+);
+assert.strictEqual(
+    panelStyle,
+    'border-radius: 12px',
+    `disable() must remove only our inline declaration and preserve sibling styles, got: ${panelStyle}`,
 );
 
 console.log('ok — enable/disable clean: no leaked signals, sources, or panel classes');

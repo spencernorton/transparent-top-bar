@@ -51,6 +51,9 @@ export default class TransparentTopBarWithCustomTransparencyExtension extends Ex
         this._settingsSignalId = null;
         this._autoTransparency = null;
         this._appliedOpacity = null;
+        this._appliedBgStyle = null;
+        this._lastMeasuredKey = null;
+        this._windowTrackingActive = false;
         this._backgroundSignalIds = [];
         this.darkFullScreenChangeDebounce = null;
         this.textShadowChangeDebounce = null;
@@ -89,19 +92,9 @@ export default class TransparentTopBarWithCustomTransparencyExtension extends Ex
             Main.sessionMode.connect('updated', this._updateTransparent.bind(this))
         ]);
 
-        for (const metaWindowActor of global.get_window_actors()) {
-            this._onWindowActorAdded(metaWindowActor.get_parent(), metaWindowActor);
+        if (this._darkFullScreen) {
+            this._connectWindowTracking();
         }
-
-        this._actorSignalIds.set(global.window_group, [
-            global.window_group.connect('child-added', this._onWindowActorAdded.bind(this)),
-            global.window_group.connect('child-removed', this._onWindowActorRemoved.bind(this))
-        ]);
-
-        // Defer geometry reads until Shell has applied the workspace switch for this frame.
-        this._actorSignalIds.set(global.window_manager, [
-            global.window_manager.connect('switch-workspace', this._scheduleTransparencyUpdate.bind(this))
-        ]);
 
         // Anything that changes what is behind the panel, or where the panel is.
         for (const key of ['picture-uri', 'picture-uri-dark', 'picture-options',
@@ -153,6 +146,11 @@ export default class TransparentTopBarWithCustomTransparencyExtension extends Ex
 
         if (key === 'dark-full-screen') {
             this._darkFullScreen = this._settings.get_boolean('dark-full-screen');
+            if (this._darkFullScreen) {
+                this._connectWindowTracking();
+            } else {
+                this._disconnectWindowTracking();
+            }
             this._debounce('darkFullScreenChangeDebounce', () => this._updateTransparent());
             return;
         }
@@ -222,11 +220,9 @@ export default class TransparentTopBarWithCustomTransparencyExtension extends Ex
         this.darkFullScreenChangeDebounce = null;
         this.textShadowChangeDebounce = null;
 
-        for (const actorSignalIds of [this._actorSignalIds, this._windowSignalIds]) {
-            if (!actorSignalIds) {
-                continue;
-            }
-            for (const [actor, signalIds] of actorSignalIds) {
+        this._disconnectWindowTracking();
+        if (this._actorSignalIds) {
+            for (const [actor, signalIds] of this._actorSignalIds) {
                 for (const signalId of signalIds) {
                     actor.disconnect(signalId);
                 }
@@ -241,10 +237,54 @@ export default class TransparentTopBarWithCustomTransparencyExtension extends Ex
         Main.panel.remove_style_class_name('no-text-shadow');
         Main.panel.remove_style_class_name('transparent-top-bar-no-motion');
         this._appliedOpacity = null;
+        this._appliedBgStyle = null;
+        this._lastMeasuredKey = null;
         this._autoTransparency = null;
         this._backgroundSettings = null;
         this._interfaceSettings = null;
         this._settings = null;
+    }
+
+    _connectWindowTracking() {
+        if (this._windowTrackingActive || !this._actorSignalIds || !this._windowSignalIds) {
+            return;
+        }
+        this._windowTrackingActive = true;
+        for (const metaWindowActor of global.get_window_actors()) {
+            this._onWindowActorAdded(metaWindowActor.get_parent(), metaWindowActor);
+        }
+        this._actorSignalIds.set(global.window_group, [
+            global.window_group.connect('child-added', this._onWindowActorAdded.bind(this)),
+            global.window_group.connect('child-removed', this._onWindowActorRemoved.bind(this)),
+        ]);
+        this._actorSignalIds.set(global.window_manager, [
+            global.window_manager.connect('switch-workspace', this._scheduleTransparencyUpdate.bind(this)),
+        ]);
+    }
+
+    _disconnectWindowTracking() {
+        if (!this._windowTrackingActive) {
+            return;
+        }
+        this._windowTrackingActive = false;
+        this._cancelTransparencyUpdate();
+        for (const obj of [global.window_group, global.window_manager]) {
+            const ids = this._actorSignalIds?.get(obj);
+            if (ids) {
+                for (const id of ids) {
+                    obj.disconnect(id);
+                }
+                this._actorSignalIds.delete(obj);
+            }
+        }
+        if (this._windowSignalIds) {
+            for (const [actor, ids] of this._windowSignalIds) {
+                for (const id of ids) {
+                    actor.disconnect(id);
+                }
+            }
+            this._windowSignalIds.clear();
+        }
     }
 
     _onWindowActorAdded(container, metaWindowActor) {
@@ -396,23 +436,37 @@ export default class TransparentTopBarWithCustomTransparencyExtension extends Ex
         return this._settings.get_int('transparency');
     }
 
-    _setTransparent(transparent) {
-        // Upstream removed 'transparent-top-bar-<n>' using the CURRENT setting value, so a class
-        // applied under an older value was never removed. Harmless when the value only changes on
-        // a slider drag; a steady leak of stale classes once auto mode retunes it per wallpaper.
-        const target = transparent ? this._effectiveTransparency() : null;
-        if (this._appliedOpacity !== null && this._appliedOpacity !== target) {
-            Main.panel.remove_style_class_name('transparent-top-bar-' + this._appliedOpacity);
-            this._appliedOpacity = null;
+    // Mutate only our own background-color/box-shadow fragment on Main.panel's
+    // inline style so declarations from other extensions (e.g. border-radius) stay intact.
+    _applyPanelBgStyle(bgDecl) {
+        if (this._appliedBgStyle === bgDecl) {
+            return;
         }
+        const current = Main.panel.get_style() ?? '';
+        const stripped = (this._appliedBgStyle ? current.replace(this._appliedBgStyle, '') : current)
+            .replace(/(?:^|;)\s*;+/g, ';')
+            .replace(/^[\s;]+|[\s;]+$/g, '');
+        this._appliedBgStyle = bgDecl;
+        const nextStyle = [stripped, bgDecl].filter(Boolean).join('; ') || null;
+        if (Main.panel.get_style() !== nextStyle) {
+            Main.panel.set_style(nextStyle);
+        }
+    }
+
+    _setTransparent(transparent) {
+        const inOverview = Main.overview.visibleTarget || Main.panel.has_style_pseudo_class('overview');
+        const target = transparent ? this._effectiveTransparency() : null;
         if (target === null) {
             Main.panel.remove_style_class_name('transparent-top-bar');
+            this._applyPanelBgStyle(null);
+            this._appliedOpacity = null;
         } else {
             Main.panel.add_style_class_name('transparent-top-bar');
-            if (this._appliedOpacity !== target) {
-                Main.panel.add_style_class_name('transparent-top-bar-' + target);
-                this._appliedOpacity = target;
-            }
+            const bgDecl = inOverview
+                ? null
+                : `background-color: rgba(0, 0, 0, ${(target / 100).toFixed(2)}); box-shadow: none;`;
+            this._applyPanelBgStyle(bgDecl);
+            this._appliedOpacity = target;
         }
 
         this._updateTextShadow();
@@ -468,8 +522,19 @@ export default class TransparentTopBarWithCustomTransparencyExtension extends Ex
         }
         if (!this._settings.get_boolean('auto-transparency')) {
             this._autoTransparency = null;
+            this._lastMeasuredKey = null;
             // Let the real window/overview state decide, rather than inferring it from whether we
             // happen to have an opacity class applied.
+            this._updateTransparent();
+            return;
+        }
+        const uri = this._wallpaperUri();
+        const pictureOptions = this._backgroundSettings.get_string('picture-options');
+        const minOpacity = this._settings.get_int('auto-min-transparency');
+        const maxOpacity = this._settings.get_int('auto-max-transparency');
+        const primary = Main.layoutManager.primaryMonitor;
+        const measureKey = `${uri ?? 'solid'}|${pictureOptions}|${minOpacity}|${maxOpacity}|${primary?.x},${primary?.y},${primary?.width}x${primary?.height}`;
+        if (measureKey === this._lastMeasuredKey && this._autoTransparency !== null) {
             this._updateTransparent();
             return;
         }
@@ -479,8 +544,8 @@ export default class TransparentTopBarWithCustomTransparencyExtension extends Ex
         const cancellable = this._autoCancellable;
 
         measurePanelBackdrop(
-            this._wallpaperUri(),
-            this._backgroundSettings.get_string('picture-options'),
+            uri,
+            pictureOptions,
             cancellable,
             (luminance) => {
                 if (cancellable.is_cancelled() || this._settings === null) {
@@ -491,12 +556,13 @@ export default class TransparentTopBarWithCustomTransparencyExtension extends Ex
                 if (backdrop === null) {
                     // Genuinely unreadable: fall back to the manual value rather than guessing.
                     this._autoTransparency = null;
+                    this._lastMeasuredKey = null;
                     this._updateTransparent();
                     return;
                 }
                 const target = pickOpacity(backdrop, {
-                    min: this._settings.get_int('auto-min-transparency'),
-                    max: this._settings.get_int('auto-max-transparency'),
+                    min: minOpacity,
+                    max: maxOpacity,
                 });
                 const current = this._autoTransparency;
                 const damped =
@@ -504,7 +570,10 @@ export default class TransparentTopBarWithCustomTransparencyExtension extends Ex
                         ? current
                         : target;
                 this._autoTransparency = damped;
-                this._settings.set_int('auto-last-opacity', damped);
+                this._lastMeasuredKey = measureKey;
+                if (this._settings.get_int('auto-last-opacity') !== damped) {
+                    this._settings.set_int('auto-last-opacity', damped);
+                }
                 this._updateTransparent();
             },
         );

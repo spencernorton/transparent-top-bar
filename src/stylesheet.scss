@@ -1,36 +1,11 @@
 #panel.transparent-top-bar {
     /* environmental motion: 500 ms */
     transition-duration: 500ms;
+    box-shadow: none;
 }
 
 #panel.transparent-top-bar:overview {
     background-color: transparent;
-    transition-duration: 250ms;
-}
-
-#panel .panel-corner {
-  -panel-corner-border-width: 0px;
-}
-
-@for $i from 0 through 100 {
-    $opacity: $i / 100;
-    @debug "Opacity: #{$opacity}";
-    #panel.transparent-top-bar-#{$i} {
-        background-color: rgba(0, 0, 0, $opacity);
-        -panel-corner-border-width: 0px;
-        -panel-corner-opacity: $opacity;
-        /* environmental motion: 500 ms */
-        transition-duration: 500ms;
-        box-shadow:  none;
-    }
-
-    #panel.transparent-top-bar-#{$i} .panel-corner {
-        -panel-corner-background-color: rgba(0, 0, 0, $opacity);
-    }
-}
-
-#panel.transparent-top-bar:overview .panel-corner {
-    -panel-corner-opacity: 0;
     transition-duration: 250ms;
 }
 

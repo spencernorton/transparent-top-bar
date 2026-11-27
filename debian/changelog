@@ -1,3 +1,13 @@
+gnome-shell-extension-transparent-top-bar (2.0.1) resolute; urgency=medium
+
+  * Connect window-actor listeners only while dark-full-screen is enabled.
+  * Apply panel opacity via a scoped inline style preserving sibling styles
+    and drop the 101-class stylesheet rules.
+  * Read precomputed panel luminance sidecars when present and cache
+    measurements across identical wallpaper contexts.
+
+ -- Norvi <apt@globalentry.systems>  Fri, 27 Nov 2026 21:15:00 +0000
+
 gnome-shell-extension-transparent-top-bar (2.0.0) resolute; urgency=medium
 
   * First public release. The UUID is now
